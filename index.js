@@ -3838,7 +3838,7 @@ insertRow(1, {"0":"时间跨度1", "1":"总结大纲", "2":"AM01"})
 
       const minLength = plotSettings.minLength || 0;
       let processedMessage = null;
-      const maxRetries = 3;
+      const maxRetries = 5;
 
       // 检查中止信号的帮助函数
       const checkAbort = () => {
@@ -14458,7 +14458,7 @@ insertRow(1, ["时间2", "大纲事件2...", "关键词"]);
 
         // 调用AI API（复用现有的逻辑）
         let aiResponseText = "";
-        const maxRetries = 3;
+        const maxRetries = 5;
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
@@ -14703,7 +14703,7 @@ insertRow(1, ["时间2", "大纲事件2...", "关键词"]);
     let loadingToast = null;
     let success = false;
     let modifiedKeys = []; // [修复] 提升作用域
-    const maxRetries = 3;
+    const maxRetries = 5;
     const baseRetryDelayMs = 1000;
     const maxRetryDelayMs = 10000;
     const computeBackoffDelay = (attempt) => {
@@ -15206,7 +15206,7 @@ insertRow(1, ["时间2", "大纲事件2...", "关键词"]);
 
         let aiResponseText = "";
         let lastError = null;
-        const maxRetries = 3;
+        const maxRetries = 5;
 
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           if (wasStoppedByUser_ACU) throw new Error("用户终止操作");
