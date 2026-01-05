@@ -1735,6 +1735,16 @@ insertRow(1, {"0":"时间跨度1", "1":"总结大纲", "2":"AM01"})
     console.warn(`[${SCRIPT_ID_PREFIX_ACU}]`, ...args);
   }
 
+  function getExponentialBackoffDelay_ACU(attempt, options = {}) {
+    const baseMs = Number.isFinite(options.baseMs) ? options.baseMs : 1000;
+    const maxMs = Number.isFinite(options.maxMs) ? options.maxMs : 10000;
+    const jitterRatio = Number.isFinite(options.jitterRatio) ? options.jitterRatio : 0.4;
+    const normalizedAttempt = Math.max(0, (Number.isFinite(attempt) ? attempt : 1) - 1);
+    const capped = Math.min(baseMs * Math.pow(2, normalizedAttempt), maxMs);
+    const jitter = Math.random() * jitterRatio * capped;
+    return Math.floor(capped + jitter);
+  }
+
   // --- Toast / 通知（仅影响本插件的提示外观，不改变业务逻辑） ---
   const ACU_TOAST_TITLE_ACU = "神·数据库";
   const _acuToastDedup_ACU = new Map(); // key -> ts
@@ -3873,8 +3883,10 @@ insertRow(1, {"0":"时间跨度1", "1":"总结大纲", "2":"AM01"})
             break;
           }
           if (i < maxRetries - 1) {
+            const waitTime = getExponentialBackoffDelay_ACU(i + 1, { baseMs: 1000, maxMs: 10000 });
             showToastr_ACU("warning", `回复过短，准备重试...`, "剧情规划大师", { timeOut: 2000 });
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            logDebug_ACU(`剧情规划将在 ${waitTime}ms 后重试 (第 ${i + 1} 次尝试失败)。`);
+            await new Promise((resolve) => setTimeout(resolve, waitTime));
           }
         }
       } else {
@@ -14557,7 +14569,11 @@ insertRow(1, ["时间2", "大纲事件2...", "关键词"]);
             break;
           } catch (e) {
             logWarn_ACU(`自动合并批次 ${i + 1} 尝试 ${attempt} 失败: ${e.message}`);
-            if (attempt < maxRetries) await new Promise((resolve) => setTimeout(resolve, 2000));
+            if (attempt < maxRetries) {
+              const waitTime = getExponentialBackoffDelay_ACU(attempt, { baseMs: 2000, maxMs: 20000 });
+              logDebug_ACU(`自动合并批次 ${i + 1} 将在 ${waitTime}ms 后重试。`);
+              await new Promise((resolve) => setTimeout(resolve, waitTime));
+            }
           }
         }
 
@@ -14704,13 +14720,6 @@ insertRow(1, ["时间2", "大纲事件2...", "关键词"]);
     let success = false;
     let modifiedKeys = []; // [修复] 提升作用域
     const maxRetries = 5;
-    const baseRetryDelayMs = 1000;
-    const maxRetryDelayMs = 10000;
-    const computeBackoffDelay = (attempt) => {
-      const capped = Math.min(baseRetryDelayMs * Math.pow(2, Math.max(0, attempt - 1)), maxRetryDelayMs);
-      const jitter = Math.random() * 0.4 * capped;
-      return Math.floor(capped + jitter);
-    };
 
     try {
       // [新增] 静默模式下不通知填表开始
@@ -14816,7 +14825,7 @@ insertRow(1, ["时间2", "大纲事件2...", "关键词"]);
 
           // 如果不是最后一次尝试，等待后重试
           if (attempt < maxRetries) {
-            const waitTime = computeBackoffDelay(attempt);
+            const waitTime = getExponentialBackoffDelay_ACU(attempt);
             logDebug_ACU(`等待 ${waitTime}ms 后重试... (API 调用失败)`);
             await new Promise((resolve) => setTimeout(resolve, waitTime));
             continue;
@@ -14835,7 +14844,7 @@ insertRow(1, ["时间2", "大纲事件2...", "关键词"]);
           if (attempt === maxRetries) {
             throw new Error(`AI在 ${maxRetries} 次尝试后仍未能返回有效指令。`);
           }
-          const waitTime = computeBackoffDelay(attempt);
+          const waitTime = getExponentialBackoffDelay_ACU(attempt);
           logDebug_ACU(`等待 ${waitTime}ms 后重试... (AI 响应无效)`);
           await new Promise((resolve) => setTimeout(resolve, waitTime));
           continue;
@@ -15329,7 +15338,11 @@ insertRow(1, ["时间2", "大纲事件2...", "关键词"]);
           } catch (e) {
             lastError = e;
             logWarn_ACU(`批次 ${i + 1} 尝试 ${attempt} 失败: ${e.message}`);
-            if (attempt < maxRetries) await new Promise((resolve) => setTimeout(resolve, 2000));
+            if (attempt < maxRetries) {
+              const waitTime = getExponentialBackoffDelay_ACU(attempt, { baseMs: 2000, maxMs: 20000 });
+              logDebug_ACU(`手动合并批次 ${i + 1} 将在 ${waitTime}ms 后重试。`);
+              await new Promise((resolve) => setTimeout(resolve, waitTime));
+            }
           }
         }
         if (lastError) throw new Error(`批次 ${i + 1} 在 ${maxRetries} 次尝试后均失败: ${lastError.message}`);
